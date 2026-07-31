@@ -8,12 +8,13 @@ test('parses a URL and output-directory setting', () => {
   });
 });
 
-test('accepts WeChat, LinkedIn, and Xiaohongshu note URLs', () => {
+test('accepts WeChat, LinkedIn, Xiaohongshu, and Bilibili URLs', () => {
   assert.equal(validateTargetUrl('https://mp.weixin.qq.com/s/example').valid, true);
   assert.equal(validateTargetUrl('https://www.linkedin.com/posts/example').valid, true);
   assert.equal(validateTargetUrl('https://www.xiaohongshu.com/explore/example').valid, true);
   assert.equal(validateTargetUrl('https://xhslink.com/example').valid, true);
   assert.equal(validateTargetUrl('http://xhslink.cn/example').valid, true);
+  assert.equal(validateTargetUrl('https://www.bilibili.com/video/BV1pgGc6BELe').valid, true);
   assert.equal(validateTargetUrl('https://example.com/article').valid, false);
   assert.equal(validateTargetUrl('not a url').valid, false);
 });
