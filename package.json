@@ -1,0 +1,16 @@
+{
+  "name": "social-media-to-notebooklm",
+  "version": "1.3.0",
+  "description": "社交媒体文章与动态超强提取器",
+  "main": "scrape.js",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "playwright": "1.60.0",
+    "turndown": "7.2.4"
+  }
+}
