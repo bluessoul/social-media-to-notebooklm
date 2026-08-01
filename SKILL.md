@@ -1,8 +1,6 @@
 ---
 name: social-media-to-notebooklm
-description: "微信公众号、LinkedIn、小红书与哔哩哔哩内容提取器。支持文章归档和 B 站官方/AI 字幕导出；在用户正常浏览器会话中提取可见内容并输出离线文件。"
-version: "1.4.0"
-author: "Antigravity"
+description: "微信公众号、LinkedIn、小红书与哔哩哔哩内容提取、归档和 NotebookLM 交接技能。支持文章归档、B 站官方/AI 字幕导出，并在 Codex 中保存完成后按用户确认进入 NotebookLM 上传流程。"
 ---
 
 ## v1.4 使用方式更新
@@ -10,6 +8,7 @@ author: "Antigravity"
 - 不再自动抓取预设文章；必须提供受支持平台的单篇链接或 B 站视频链接。
 - 第一次使用时设置保存位置。以后会自动使用该位置；只有使用 `--set-output "<保存位置>"` 时才会修改。
 - 可使用 `--help` 查看参数；使用 `--no-upload` 跳过 NotebookLM 上传询问。
+- 在 Codex 中使用 `--no-upload --handoff-notebooklm` 完成保存后交接；用户确认前不得上传。
 - 需要 Node.js 18 或更高版本。
 
 
@@ -57,10 +56,23 @@ npx playwright install chromium
   * 小红书单篇图文笔记（格式如 `https://www.xiaohongshu.com/explore/...` 或分享短链接）
   * 哔哩哔哩视频（格式如 `https://www.bilibili.com/video/BV...`）
 
+其他参数：
+
+* `--set-output <目录>`：设置文章类任务的默认保存位置
+* `--no-upload`：跳过旧版命令行 NotebookLM 上传
+* `--upload`：保留旧版命令行直接上传行为
+* `--handoff-notebooklm`：生成 NotebookLM 交接清单；应与 `--no-upload` 一起使用
+
 ### B 站字幕导出
 
 ```powershell
 {baseDir}\run.bat --url "https://www.bilibili.com/video/BV..." --output "D:\\Subtitles"
+```
+
+在 Codex 对话中，文章或 B 站字幕任务完成后应使用交接模式：
+
+```powershell
+{baseDir}\run.bat --url "<Target_URL>" --no-upload --handoff-notebooklm
 ```
 
 脚本先请求视频官方字幕轨道；如果没有可下载的官方轨道，会连接端口 9222/9223 的 Chrome/Edge，打开字幕菜单并选择 `中文 AI`，随后以加速播放实时捕获字幕。使用 AI 字幕时请先在该浏览器登录 B 站，并用 `--remote-debugging-port=9223` 启动浏览器。
@@ -75,3 +87,24 @@ npx playwright install chromium
 3. **`[动态标题].pdf`**：A4 打印格式 PDF，适合批注或直接上传到 NotebookLM。
 4. **`images/`**：本地下载存储的高清图片目录。
 5. B 站视频额外生成 **`<BV>_native.srt/json`** 或 **`<BV>_ai-browser.srt/json`**，JSON 保留时间轴、来源和原始链接。
+6. 交接模式额外生成 **`<安全标题>_notebooklm_handoff.json`**；B 站额外生成 **`<BV>_<来源>_notebooklm.md`**，原始 JSON/SRT 保留不变。
+
+## Codex → NotebookLM 交接流程
+
+交接模式只生成文件和交接清单，不从 Node.js 端上传。读取清单后继续使用已安装的 NotebookLM 技能，并严格按以下顺序操作：
+
+1. 报告生成的文件和交接清单路径。
+2. 询问是否进入 NotebookLM 上传流程；用户拒绝时停止，不运行 `source add`。
+3. 文章默认推荐 PDF，并允许选择 PDF、`_online.md`、两者和已下载附件；不要默认上传本地图片引用的普通 `.md`。
+4. B 站默认选择 `*_notebooklm.md`；原始 `.json` 和 `.srt` 只归档，不直接上传。
+5. 用户同意后，运行 `notebooklm auth check --test --json` 和 `notebooklm list --json`，列出现有 Notebook，并提供新建选项。
+6. 显示最终上传摘要，包括完整文件路径、目标 Notebook 标题和完整 Notebook ID，再次请求明确确认。
+7. 只有用户最终确认后，才对每个选中文件运行：
+
+```powershell
+notebooklm source add "<完整文件路径>" --notebook "<完整Notebook ID>" --json
+```
+
+8. 报告每个文件的 source ID 和处理状态。失败时保留交接清单，提供重试或跳过选项，不删除本地文件。
+
+直接运行 `--upload` 时保留原有命令行兼容行为；该模式不属于 Codex 对话交接流程。NotebookLM CLI 路径应通过 PATH 或 `NOTEBOOKLM_EXE` 发现，不要写入用户专属硬编码路径。

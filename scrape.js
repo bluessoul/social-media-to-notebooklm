@@ -7,12 +7,14 @@ const readline = require('readline');
 const os = require('os');
 const { parseArguments, validateTargetUrl } = require('./lib/arguments');
 const { loadSettings, saveOutputDirectory } = require('./lib/settings');
+const { buildArticleHandoff, writeHandoff } = require('./lib/handoff');
 
 // Parse arguments
 const cli = parseArguments(process.argv.slice(2));
 const targetUrl = cli.targetUrl;
 const forceUpload = cli.forceUpload;
 const skipUpload = cli.skipUpload;
+const handoffNotebooklm = cli.handoffNotebooklm;
 const isWeChat = targetUrl.includes('mp.weixin.qq.com');
 const isLinkedIn = targetUrl.includes('linkedin.com');
 const isXiaohongshu = targetUrl.includes('xiaohongshu.com') || targetUrl.includes('xhslink.com');
@@ -176,6 +178,7 @@ function showHelp() {
   --set-output <路径>  设置或修改默认保存位置
   --upload             抓取后直接上传到 NotebookLM
   --no-upload          抓取后不询问 NotebookLM 上传
+  --handoff-notebooklm 抓取后生成 NotebookLM 交接清单（与 --no-upload 一起使用）
   --help               显示本说明`);
 }
 
@@ -187,6 +190,23 @@ function explainError(error) {
   return `处理失败：${message}`;
 }
 
+function quoteCommandPath(commandPath) {
+  return `"${String(commandPath).replace(/"/g, '""')}"`;
+}
+
+function discoverNotebookLmCommand() {
+  const configured = process.env.NOTEBOOKLM_EXE;
+  if (configured && fs.existsSync(configured)) return quoteCommandPath(configured);
+  try {
+    const candidates = execSync('where.exe notebooklm', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
+      .split(/\r?\n/)
+      .map(value => value.trim())
+      .filter(Boolean);
+    if (candidates.length) return quoteCommandPath(candidates[0]);
+  } catch (e) {}
+  return 'notebooklm';
+}
+
 // Helper to interactively ask and upload files to Google NotebookLM if the CLI is authenticated
 async function uploadToNotebookLM(filePath, articleTitle) {
   try {
@@ -194,32 +214,15 @@ async function uploadToNotebookLM(filePath, articleTitle) {
     
     // 1. Run auth check to see if the CLI is authenticated (using standard python scripts path if available to ensure rookiepy access, or global notebooklm command)
     let authOk = false;
-    let cmdPrefix = 'notebooklm';
-    
-    // Try global notebooklm first
+    const cmdPrefix = discoverNotebookLmCommand();
+
     try {
-      const authOutput = execSync('notebooklm auth check --test --json', { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+      const authOutput = execSync(`${cmdPrefix} auth check --test --json`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
       const authData = JSON.parse(authOutput);
       if (authData.status === 'ok' && authData.checks && authData.checks.token_fetch === true) {
         authOk = true;
-        cmdPrefix = 'notebooklm';
       }
     } catch (e) {}
-    
-    // If not authenticated, try standard python's notebooklm script path which has rookiepy installed
-    if (!authOk) {
-      const stdScriptsPath = 'C:\\Users\\blues\\AppData\\Local\\Programs\\Python\\Python312\\Scripts\\notebooklm.exe';
-      if (fs.existsSync(stdScriptsPath)) {
-        try {
-          const authOutput = execSync(`"${stdScriptsPath}" auth check --test --json`, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
-          const authData = JSON.parse(authOutput);
-          if (authData.status === 'ok' && authData.checks && authData.checks.token_fetch === true) {
-            authOk = true;
-            cmdPrefix = `"${stdScriptsPath}"`;
-          }
-        } catch (e) {}
-      }
-    }
     
     if (!authOk) {
       if (forceUpload) {
@@ -985,8 +988,10 @@ async function run() {
     console.log(`Date: ${articleData.date}`);
     console.log(`Found ${articleData.images.length} images to download.`);
     
-    // Ensure images directory exists
-    const imgDir = path.join(exportDir, 'images');
+    // Keep each article's local images isolated so multiple exports never overwrite image_1, image_2, ...
+    const imageDirName = safeTitle;
+    const imgDir = path.join(exportDir, 'images', imageDirName);
+    const relativeImageDir = `./images/${imageDirName}`;
     if (!fs.existsSync(imgDir)) {
       fs.mkdirSync(imgDir, { recursive: true });
     }
@@ -1034,8 +1039,8 @@ async function run() {
         await safeWriteFile(localFilePath, buffer, null);
         
         // Map the placeholder to the actual relative path
-        pathMap[`__LOCAL_IMAGE_${img.filename}__`] = `./images/${finalFilename}`;
-        console.log(`-> Saved as ./images/${finalFilename}`);
+        pathMap[`__LOCAL_IMAGE_${img.filename}__`] = `${relativeImageDir}/${finalFilename}`;
+        console.log(`-> Saved as ${relativeImageDir}/${finalFilename}`);
       } catch (err) {
         console.error(`Failed to download image ${img.url}:`, err.message);
       }
@@ -1178,6 +1183,7 @@ ${markdownContentOnline}
     
     // Sanitize title to be a safe Windows filename
     const outputPath = path.join(exportDir, `${safeTitle}.md`);
+    let localMarkdownPath = outputPath;
     try {
       await safeWriteFile(outputPath, finalMarkdown);
       console.log(`\nSuccess! Local Markdown file written to: ${outputPath}`);
@@ -1186,12 +1192,14 @@ ${markdownContentOnline}
         const fallbackPath = path.join(exportDir, `${safeTitle}_local.md`);
         console.warn(`\nWarning: ${outputPath} is locked by another program. Writing to fallback: ${fallbackPath}`);
         await safeWriteFile(fallbackPath, finalMarkdown);
+        localMarkdownPath = fallbackPath;
       } else {
         throw err;
       }
     }
     
     const outputPathOnline = path.join(exportDir, `${safeTitle}_online.md`);
+    let onlineMarkdownPath = outputPathOnline;
     try {
       await safeWriteFile(outputPathOnline, finalMarkdownOnline);
       console.log(`Success! Online Markdown file written to: ${outputPathOnline}`);
@@ -1200,6 +1208,7 @@ ${markdownContentOnline}
         const fallbackOnlinePath = path.join(exportDir, `${safeTitle}_online_fallback.md`);
         console.warn(`Warning: ${outputPathOnline} is locked by another program. Writing to fallback: ${fallbackOnlinePath}`);
         await safeWriteFile(fallbackOnlinePath, finalMarkdownOnline);
+        onlineMarkdownPath = fallbackOnlinePath;
       } else {
         throw err;
       }
@@ -1208,6 +1217,7 @@ ${markdownContentOnline}
     // Generate beautiful PDF using Playwright
     console.log('\nGenerating beautiful PDF with embedded images...');
     const pdfPath = path.join(exportDir, `${safeTitle}.pdf`);
+    let generatedPdfPath = null;
     const tempHtmlPath = path.join(exportDir, `temp_${safeTitle}.html`);
     const structuredCommentsHtml = (articleData.isXiaohongshu || articleData.isLinkedIn) && articleData.commentsList?.length
       ? `<section class="xhs-comments"><h2>评论区（当前页面已显示${articleData.commentsCount ? ` · 共 ${escapeHtml(articleData.commentsCount)}` : ''}）</h2>${articleData.commentsList.map((comment, index) => {
@@ -1532,6 +1542,7 @@ ${markdownContentOnline}
           headerTemplate: '<div></div>',
           footerTemplate: '<div style="width:100%;font-size:9px;color:#777;text-align:center;"><span class="pageNumber"></span> / <span class="totalPages"></span></div>'
         });
+        generatedPdfPath = pdfPath;
         console.log(`Success! Beautiful PDF written to: ${pdfPath}`);
       } catch (pdfErr) {
         if (pdfErr.code === 'EBUSY' || pdfErr.code === 'EPERM' || pdfErr.message.includes('EBUSY') || pdfErr.message.includes('locked')) {
@@ -1549,6 +1560,7 @@ ${markdownContentOnline}
               },
               printBackground: true
             });
+            generatedPdfPath = fallbackPdfPath;
             console.log(`Success! Beautiful PDF written to fallback: ${fallbackPdfPath}`);
           } catch (fallbackErr) {
             const uniquePdfPath = path.join(exportDir, `${safeTitle}_clean.pdf`);
@@ -1565,6 +1577,7 @@ ${markdownContentOnline}
                 },
                 printBackground: true
               });
+              generatedPdfPath = uniquePdfPath;
               console.log(`Success! Beautiful PDF written to clean path: ${uniquePdfPath}`);
             } catch (cleanErr) {
               const timestampedPdfPath = path.join(exportDir, `${safeTitle}_${Date.now()}.pdf`);
@@ -1580,6 +1593,7 @@ ${markdownContentOnline}
                 },
                 printBackground: true
               });
+              generatedPdfPath = timestampedPdfPath;
               console.log(`Success! Beautiful PDF written to timestamped path: ${timestampedPdfPath}`);
             }
           }
@@ -1602,9 +1616,25 @@ ${markdownContentOnline}
       }
     }
     
-    // Trigger Google NotebookLM interactive upload if authenticated (unless skipUpload is requested)
-    const targetFileForSync = outputPathOnline || outputPath;
-    if (!skipUpload && fs.existsSync(targetFileForSync)) {
+    if (handoffNotebooklm) {
+      const handoff = buildArticleHandoff({
+        sourceUrl: targetUrl,
+        title: articleData.title,
+        outputDir: exportDir,
+        files: {
+          localMarkdown: localMarkdownPath,
+          onlineMarkdown: onlineMarkdownPath,
+          pdf: generatedPdfPath
+        },
+        attachmentFile: articleData.attachmentFile
+      });
+      const handoffPath = writeHandoff(exportDir, safeTitle, handoff);
+      console.log(`NotebookLM 交接清单已生成: ${handoffPath}`);
+    }
+
+    // Trigger the legacy command-line upload only when handoff mode is not active.
+    const targetFileForSync = onlineMarkdownPath || localMarkdownPath;
+    if (!skipUpload && !handoffNotebooklm && fs.existsSync(targetFileForSync)) {
       const syncResult = await uploadToNotebookLM(targetFileForSync, articleData.title);
       
       // Also upload attachment to the SAME selected notebook if it exists and user had uploaded the main article

@@ -4,7 +4,13 @@ const { parseArguments, validateTargetUrl } = require('../lib/arguments');
 
 test('parses a URL and output-directory setting', () => {
   assert.deepEqual(parseArguments(['--set-output', 'D:/exports', '--url', 'https://mp.weixin.qq.com/s/example']), {
-    targetUrl: 'https://mp.weixin.qq.com/s/example', setOutput: 'D:/exports', forceUpload: false, skipUpload: false, help: false
+    targetUrl: 'https://mp.weixin.qq.com/s/example', setOutput: 'D:/exports', forceUpload: false, skipUpload: false, handoffNotebooklm: false, help: false
+  });
+});
+
+test('parses the NotebookLM handoff flag without changing upload compatibility', () => {
+  assert.deepEqual(parseArguments(['--url', 'https://mp.weixin.qq.com/s/example', '--no-upload', '--handoff-notebooklm']), {
+    targetUrl: 'https://mp.weixin.qq.com/s/example', setOutput: '', forceUpload: false, skipUpload: true, handoffNotebooklm: true, help: false
   });
 });
 
