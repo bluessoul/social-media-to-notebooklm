@@ -4,3 +4,5 @@ settings.json
 *.pdf
 *.md
 !SKILL.md
+!references/
+!references/bilibili-ai-subtitle-fallback.md

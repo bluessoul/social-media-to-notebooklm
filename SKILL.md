@@ -75,7 +75,19 @@ npx playwright install chromium
 {baseDir}\run.bat --url "<Target_URL>" --no-upload --handoff-notebooklm
 ```
 
-脚本先请求视频官方字幕轨道；如果没有可下载的官方轨道，会连接端口 9222/9223 的 Chrome/Edge，打开字幕菜单并选择 `中文 AI`，随后以加速播放实时捕获字幕。使用 AI 字幕时请先在该浏览器登录 B 站，并用 `--remote-debugging-port=9223` 启动浏览器。
+脚本先请求视频官方字幕轨道；没有官方轨道时，再尝试连接端口 9222/9223 的 Chrome/Edge，打开字幕菜单并选择 `中文 AI`，随后以加速播放实时捕获字幕。使用 AI 字幕时请先在该浏览器登录 B 站，并用 `--remote-debugging-port=9223` 启动浏览器。
+
+**不要把官方接口为空、页面快照中的“暂无字幕”，或 `CDP_UNAVAILABLE` 当作“视频没有字幕”。** 三者只说明当前路径未取得字幕。只有实际展开播放器字幕菜单后，确认没有可见的 `中文 AI` 选项，才可以报告该 AI 字幕不可用。
+
+### Codex 中的中文 AI 回退
+
+当命令行返回 `CDP_UNAVAILABLE`，且任务在 Codex 对话中执行时，改用已连接的 Chrome 会话完成 AI 字幕导出；不要要求用户先重启浏览器，也不要直接结束任务。详细且可复用的步骤见 [references/bilibili-ai-subtitle-fallback.md](references/bilibili-ai-subtitle-fallback.md)。核心顺序为：
+
+1. 打开原始 B 站视频，等待播放器就绪，再展开字幕菜单。
+2. 用可见的 `[data-lan="ai-zh"]` 选项选择中文 AI；以“字幕已切换至 中文”或实际出现的字幕文本为成功信号。
+3. 在开始捕获前将播放位置复位至 `00:00`。优先使用播放器受控的 CDP 通道；不要依赖截图坐标或续播位置。
+4. 已验证的快速路径是：从 `00:00` 重置后，以 `8.0x` 播放并每 `0.1` 秒采样一次，直到媒体结束。按实际字幕变化采样并去除“正在缓冲”等播放器状态文字；只有字幕明显漏段或持续缓冲时，才降回 `4x` 重试。
+5. 导出 `BV*_ai-browser.srt/json`、`*_notebooklm.md` 和 `*_notebooklm_handoff.json`。检查首条时间接近 0、末条接近视频时长、无缓冲状态行和无相邻重复字幕。
 
 ---
 
