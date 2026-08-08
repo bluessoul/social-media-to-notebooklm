@@ -8,6 +8,7 @@
 - LinkedIn 动态和长文
 - 小红书单篇图文笔记
 - 哔哩哔哩视频字幕：官方字幕和播放器中的“中文 AI”字幕
+- Telegram 聊天记录 JSON：自动转换为高清 Markdown 离线文档与 NotebookLM 格式
 
 ## 安装
 
@@ -35,6 +36,17 @@ python <skill-installer>/scripts/install-skill-from-github.py `
 ```
 
 文章类任务会生成本地 Markdown、在线 Markdown、PDF 和图片目录。
+
+## Telegram 聊天记录转换
+
+```powershell
+.\run.bat --file "D:\Path\To\ChatExport.json"
+```
+
+将 Telegram 导出的 JSON 聊天文件转换为适合阅读和 NotebookLM 知识库构建的 Markdown 文档：
+- 按天分类 `## 📅 YYYY-MM-DD`
+- 消息内部链接与回复关联 (`<a id="msg-xx"></a>`)
+- 代码块、图文附件、系统事件、投票及回应处理
 
 ## B 站字幕
 

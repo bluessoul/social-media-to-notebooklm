@@ -355,6 +355,25 @@ async function run() {
   }
   const validation = validateTargetUrl(targetUrl);
   if (!validation.valid) throw new Error(validation.message);
+
+  if (validation.type === 'telegram_json') {
+    const { processTelegramExport } = require('./lib/telegram-converter');
+    exportDir = await configureOutputDirectory();
+    const result = processTelegramExport({
+      jsonPath: targetUrl,
+      outputDir: exportDir,
+      options: cli
+    });
+    console.log('[成功] Telegram 聊天记录导出完成:');
+    console.log(- 标题: );
+    console.log(- 消息数: );
+    console.log(- Markdown: );
+    if (result.handoffPath) {
+      console.log(- NotebookLM 交接清单: );
+    }
+    return;
+  }
+
   exportDir = await configureOutputDirectory();
   console.log(`Target URL: ${targetUrl}`);
   console.log('Launching browser...');

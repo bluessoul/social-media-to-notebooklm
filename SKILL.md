@@ -1,6 +1,6 @@
 ---
 name: social-media-to-notebooklm
-description: "微信公众号、LinkedIn、小红书与哔哩哔哩内容提取、归档和 NotebookLM 交接技能。支持文章归档、B 站官方/AI 字幕导出，并在 Codex 中保存完成后按用户确认进入 NotebookLM 上传流程。"
+description: "微信公众号、LinkedIn、小红书、哔哩哔哩内容提取与 Telegram 聊天记录 JSON 转换归档和 NotebookLM 交接技能。支持文章归档、B 站官方/AI 字幕导出、Telegram 聊天记录转换 Markdown，并在 AI 助手/Codex 中保存完成后按用户确认进入 NotebookLM 上传流程。"
 ---
 
 ## v1.4 使用方式更新
@@ -62,6 +62,22 @@ npx playwright install chromium
 * `--no-upload`：跳过旧版命令行 NotebookLM 上传
 * `--upload`：保留旧版命令行直接上传行为
 * `--handoff-notebooklm`：生成 NotebookLM 交接清单；应与 `--no-upload` 一起使用
+
+### Telegram 聊天记录导出转换
+
+```powershell
+{baseDir}\run.bat --file "D:\Path\To\ChatExport.json" --no-upload --handoff-notebooklm
+```
+或直接传入 JSON 路径：
+```powershell
+{baseDir}\run.bat "D:\Path\To\ChatExport.json" --no-upload --handoff-notebooklm
+```
+
+支持自动解析 Telegram 官方导出的 JSON 格式，转换为格式规整、便于阅读和 NotebookLM 分析的高质量 Markdown (`<群组名>_history.md`)，并自动生成 NotebookLM 交接清单。
+- **日期导航**: 按日期建立 `## 📅 YYYY-MM-DD` 目录分节。
+- **消息与回复交叉链接**: 自动建立 `<a id="msg-ID"></a>` 锚点，回复引用可直接在 Markdown 中点击跳转。
+- **富文本与代码高亮**: 完整转换粗体、斜体、代码、pre 代码块、文本链接及引用。
+- **元数据与媒体标记**: 优雅渲染系统操作（邀请/移除成员、置顶消息等）、投票统计、回应数及媒体文件类型。
 
 ### B 站字幕导出
 
