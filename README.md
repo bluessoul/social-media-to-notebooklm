@@ -45,6 +45,23 @@ python <skill-installer>/scripts/install-skill-from-github.py `
 
 该模式会生成包含绝对路径和建议上传文件的 `*_notebooklm_handoff.json`；它只完成本地归档和交接，不执行上传。
 
+## Doc88 文档提取
+
+支持 `https://www.doc88.com/p-数字.html` 预览文档链接。程序会读取文档页面结构，下载并重组页面资源，生成单个 PDF，并可生成 NotebookLM 交接清单。
+
+```powershell
+.\run.bat --url "https://www.doc88.com/p-74980400939797.html" --no-upload --handoff-notebooklm
+```
+
+Doc88 PDF 转换需要 Java 17 或更高版本、ffdec 和 presse。可以通过环境变量指定转换器：
+
+```powershell
+$env:DOC88_FFDEC_JAR = "D:\Tools\ffdec\ffdec.jar"
+$env:DOC88_PRESSE_EXE = "D:\Tools\presse.exe"
+```
+
+也可以将 `ffdec/ffdec.jar` 和 `presse(.exe)` 放在技能目录中。转换器不随本项目分发；仅使用 `--no-upload --handoff-notebooklm` 时，程序不会自动上传到 NotebookLM。
+
 ## Telegram 聊天记录转换
 
 ```powershell
@@ -111,6 +128,10 @@ bilibili-output/BVxxxxxxxxxx_ai-browser_notebooklm_handoff.json
 --handoff-notebooklm     生成 NotebookLM 交接清单，不自动上传
 --help                   查看帮助
 ```
+
+## 致谢
+
+Doc88 资源解析与页面重组的实现思路参考并致谢 [cmy2008/doc88_extractor](https://github.com/cmy2008/doc88_extractor)。本项目在此基础上采用 Node.js 原生实现，并整合了现有的 NotebookLM 交接流程。
 
 ## 开发检查
 
