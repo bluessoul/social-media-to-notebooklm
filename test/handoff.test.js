@@ -7,6 +7,7 @@ const {
   buildArticleHandoff,
   buildBilibiliMarkdown,
   buildBilibiliHandoff,
+  buildDoc88Handoff,
   writeHandoff
 } = require('../lib/handoff');
 
@@ -68,6 +69,28 @@ test('writes a Bilibili handoff without treating JSON as an upload source', () =
     assert.equal(parsed.suggested_upload, 'notebooklm_markdown');
     assert.equal(parsed.files.json, path.resolve(json));
     assert.equal(parsed.files.notebooklm_markdown, path.resolve(md));
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('builds a Doc88 handoff with the extracted PDF as the upload source', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'social-media-doc88-handoff-'));
+  try {
+    const pdf = path.join(root, 'GB_T_5019.5-2023.pdf');
+    fs.writeFileSync(pdf, 'pdf', 'utf8');
+    const handoff = buildDoc88Handoff({
+      url: 'https://www.doc88.com/p-74980400939797.html',
+      title: 'GB_T 5019.5-2023',
+      pCode: '74980400939797',
+      pageCount: 11,
+      files: { pdf }
+    });
+    assert.equal(handoff.source_type, 'doc88');
+    assert.equal(handoff.document_id, '74980400939797');
+    assert.equal(handoff.page_count, 11);
+    assert.equal(handoff.suggested_upload, 'pdf');
+    assert.equal(handoff.files.pdf, path.resolve(pdf));
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

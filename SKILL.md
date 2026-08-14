@@ -10,6 +10,8 @@ description: "微信公众号、LinkedIn、小红书、哔哩哔哩内容提取�
 - 可使用 `--help` 查看参数；使用 `--no-upload` 跳过 NotebookLM 上传询问。
 - 在 Codex 中使用 `--no-upload --handoff-notebooklm` 完成保存后交接；用户确认前不得上传。
 - 需要 Node.js 18 或更高版本。
+- 支持 Doc88 预览文档链接（`https://www.doc88.com/p-数字.html`），提取为 PDF 并生成 NotebookLM 交接清单。
+- Doc88 PDF 转换需要 Java 17、ffdec 和 presse；可通过 `DOC88_FFDEC_JAR`、`DOC88_PRESSE_EXE` 指定转换器路径。
 
 
 # 社交媒体与文章提取到 NotebookLM 技能

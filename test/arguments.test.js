@@ -24,3 +24,8 @@ test('accepts WeChat, LinkedIn, Xiaohongshu, and Bilibili URLs', () => {
   assert.equal(validateTargetUrl('https://example.com/article').valid, false);
   assert.equal(validateTargetUrl('not a url').valid, false);
 });
+
+test('accepts Doc88 preview URLs and rejects non-preview Doc88 pages', () => {
+  assert.deepEqual(validateTargetUrl('https://www.doc88.com/p-74980400939797.html'), { valid: true, type: 'doc88' });
+  assert.equal(validateTargetUrl('https://www.doc88.com/p-abc.html').valid, false);
+});
