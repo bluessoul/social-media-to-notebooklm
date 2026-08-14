@@ -15,3 +15,7 @@ PDF 转换器配置：
 - 也可以将 `ffdec/ffdec.jar` 与 `presse(.exe)` 放在技能目录中。
 
 仅生成交接清单时，使用 `--no-upload --handoff-notebooklm`。程序不会自动上传，需在 Codex 中得到用户确认后再进入 NotebookLM 流程。
+
+## 致谢
+
+Doc88 资源解析与页面重组的实现思路参考并致谢 [cmy2008/doc88_extractor](https://github.com/cmy2008/doc88_extractor)。本技能在此基础上采用 Node.js 原生实现，并整合了现有的 NotebookLM 交接流程。
