@@ -97,6 +97,21 @@ npx playwright install chromium
 
 **不要把官方接口为空、页面快照中的“暂无字幕”，或 `CDP_UNAVAILABLE` 当作“视频没有字幕”。** 三者只说明当前路径未取得字幕。只有实际展开播放器字幕菜单后，确认没有可见的 `中文 AI` 选项，才可以报告该 AI 字幕不可用。
 
+### B站增强能力
+
+- 原生字幕链路优先使用 `x/player/wbi/v2`，WBI 不可用时回退到 `x/player/v2`。
+- 当前范围是单视频，可用 URL 查询参数 `p` 指定分P；不自动批量抓取合集或 UP 主全量投稿。
+- 默认优先级固定为“官方字幕 → 已登录浏览器中的中文 AI 字幕 → 报告不可用”。`--fallback-to-asr` 只能显式开启本地 faster-whisper 回退；默认绝不会启动模型。ASR 支持 `tiny`、`base`、`small`，默认 `small`，结果标记为 `source: asr`。
+- 可启动独立 MCP server：
+
+```powershell
+node .\mcp\bilibili-server.js
+```
+
+MCP 提供 `get_video_transcript`、`search_transcript` 和 `export_notebooklm_artifacts`。MCP 只生成本地文件，不上传 NotebookLM；上传仍须经过用户确认流程。
+
+- 公开项目比较基线见 [references/bilibili-public-projects.md](references/bilibili-public-projects.md)。该文档记录比较日期和维护状态，运行时不会查询 GitHub。
+
 ### Codex 中的中文 AI 回退
 
 当命令行返回 `CDP_UNAVAILABLE`，且任务在 Codex 对话中执行时，改用已连接的 Chrome 会话完成 AI 字幕导出；不要要求用户先重启浏览器，也不要直接结束任务。详细且可复用的步骤见 [references/bilibili-ai-subtitle-fallback.md](references/bilibili-ai-subtitle-fallback.md)。核心顺序为：
