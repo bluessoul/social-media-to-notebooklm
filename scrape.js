@@ -539,6 +539,7 @@ async function run() {
       let reactionsCount = '';
       let commentsCount = '';
       let commentsList = [];
+      let xhsOrderedImageUrls = [];
       
       if (isWeChat) {
         contentEl = document.querySelector('#js_content');
@@ -738,6 +739,66 @@ async function run() {
         });
         contentEl = noteClone.childNodes.length ? noteClone : mediaEl;
 
+        // Xiaohongshu's DOM contains recommendation cards, avatars, lazy-load
+        // placeholders and sometimes duplicated carousel nodes.  The page's
+        // serialized note state contains the authoritative imageList in the
+        // order used by the post.  Prefer it so image_1 always means the first
+        // image published by the author, rather than the first <img> in DOM.
+        try {
+          const noteId = (location.pathname.match(/[0-9a-f]{20,}/i) || [])[0];
+          const stateScript = [...document.scripts]
+            .map(script => script.textContent || '')
+            .find(text => text.includes('"imageList"') && (!noteId || text.includes(noteId)));
+          if (stateScript) {
+            const imageListStart = stateScript.indexOf('"imageList"');
+            const arrayStart = stateScript.indexOf('[', imageListStart);
+            if (arrayStart >= 0) {
+              let depth = 0;
+              let quote = false;
+              let escaped = false;
+              let arrayEnd = -1;
+              for (let i = arrayStart; i < stateScript.length; i++) {
+                const ch = stateScript[i];
+                if (quote) {
+                  if (escaped) escaped = false;
+                  else if (ch === '\\') escaped = true;
+                  else if (ch === '"') quote = false;
+                  continue;
+                }
+                if (ch === '"') { quote = true; continue; }
+                if (ch === '[') depth++;
+                else if (ch === ']') {
+                  depth--;
+                  if (depth === 0) { arrayEnd = i; break; }
+                }
+              }
+              if (arrayEnd > arrayStart) {
+                const rawImageList = stateScript.slice(arrayStart, arrayEnd + 1);
+                const imageList = JSON.parse(rawImageList);
+                xhsOrderedImageUrls = imageList.map(item =>
+                  item?.urlDefault || item?.urlPre ||
+                  item?.infoList?.find(info => info?.imageScene === 'WB_DFT')?.url ||
+                  item?.infoList?.[0]?.url || ''
+                ).filter(Boolean);
+              }
+            }
+          }
+        } catch (error) {
+          // Keep the DOM fallback below for older/partially rendered pages.
+          xhsOrderedImageUrls = [];
+        }
+
+        if (xhsOrderedImageUrls.length) {
+          const orderedMedia = document.createDocumentFragment();
+          xhsOrderedImageUrls.forEach(src => {
+            const image = document.createElement('img');
+            image.setAttribute('src', src);
+            orderedMedia.appendChild(image);
+          });
+          noteClone.querySelectorAll('img').forEach(img => img.remove());
+          noteClone.appendChild(orderedMedia);
+        }
+
         // Export only comments already visible on the page. Keep DOM order and reply hierarchy.
         const cleanComment = (item) => ({
           author: (item.querySelector('.author .name, .author')?.textContent?.trim() || '匿名用户').replace(/作者$/, '').trim(),
@@ -885,13 +946,18 @@ async function run() {
           return;
         }
         
-        const filename = `image_${imgCounter}`;
+        // Zero-pad filenames so file explorers keep image_001, image_002, ...
+        // in the same order as the rendered post (especially for 10+ images).
+        const filename = `image_${String(imgCounter).padStart(3, '0')}`;
         imgCounter++;
         
         imgList.push({
           url: rawSrc,
-          filename: filename
+          filename: filename,
+          order: imgCounter - 1
         });
+
+        img.setAttribute('alt', `${isXiaohongshu ? '小红书' : '文章'}图片 ${imgCounter - 1}`);
         
         // Mark for replacement in HTML
         img.setAttribute('src', `__LOCAL_IMAGE_${filename}__`);
@@ -915,6 +981,7 @@ async function run() {
         commentsList,
         html: clone.innerHTML,
         images: imgList,
+        imageOrderSource: isXiaohongshu && xhsOrderedImageUrls.length ? 'xiaohongshu_note_imageList' : 'content_dom_order',
         isLinkedIn,
         isXiaohongshu
       };
@@ -1194,6 +1261,8 @@ ${commentsMd}
       const metaInfo = [
         `- **作者**: ${articleData.author || '未知'}`,
         `- **日期**: ${articleData.date || '未知'}`,
+        `- **图片数量**: ${articleData.images.length}`,
+        `- **图片顺序**: ${articleData.imageOrderSource === 'xiaohongshu_note_imageList' ? '按小红书笔记原始 imageList 顺序' : '按正文 DOM 顺序（回退）'}`,
         `- **原文链接**: [小红书笔记](${targetUrl})`
       ].join('\n');
       finalMarkdown = `# ${articleData.title}\n\n${metaInfo}\n\n---\n\n${markdownContent}${commentsMd}\n`;

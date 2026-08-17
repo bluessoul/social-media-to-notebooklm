@@ -116,6 +116,8 @@ npx playwright install chromium
 2. **`[动态标题]_online.md`**：**NotebookLM 云端专用版**。图片引用原官方外链地址，导入 Google NotebookLM 后云端图片即可完美渲染，且元数据保留完整。
 3. **`[动态标题].pdf`**：A4 打印格式 PDF，适合批注或直接上传到 NotebookLM。
 4. **`images/`**：本地下载存储的高清图片目录。
+   - 小红书图片优先按笔记原始 `imageList` 顺序提取，并以 `image_001`、`image_002`……保存；Markdown/PDF 元数据会注明顺序来源。
+   - 若页面没有可解析的原始列表，才回退到正文 DOM 顺序，并明确标记为回退顺序。
 5. B 站视频额外生成 **`<BV>_native.srt/json`** 或 **`<BV>_ai-browser.srt/json`**，JSON 保留时间轴、来源和原始链接。
 6. 交接模式额外生成 **`<安全标题>_notebooklm_handoff.json`**；B 站额外生成 **`<BV>_<来源>_notebooklm.md`**，原始 JSON/SRT 保留不变。
 
