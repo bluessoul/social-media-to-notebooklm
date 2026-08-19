@@ -10,8 +10,9 @@ description: "微信公众号、LinkedIn、小红书、哔哩哔哩内容提取�
 - 可使用 `--help` 查看参数；使用 `--no-upload` 跳过 NotebookLM 上传询问。
 - 在 Codex 中使用 `--no-upload --handoff-notebooklm` 完成保存后交接；用户确认前不得上传。
 - 需要 Node.js 18 或更高版本。
-- 支持 Doc88 预览文档链接（`https://www.doc88.com/p-数字.html`），提取为 PDF 并生成 NotebookLM 交接清单。
-- Doc88 PDF 转换需要 Java 17、ffdec 和 presse；可通过 `DOC88_FFDEC_JAR`、`DOC88_PRESSE_EXE` 指定转换器路径。
+- 支持 Doc88 预览文档链接（`https://www.doc88.com/p-数字.html`），默认自动打开页面、展开全部页面、滚动触发 Canvas 加载并导出 PDF，再生成 NotebookLM 交接清单。
+- Doc88 默认使用浏览器 Canvas 导出；浏览器渲染失败时自动回退到 PH/PK→SWF→FFDec/Presse 资源解析方式。回退方式需要 Java 17、ffdec 和 presse；可通过 `DOC88_FFDEC_JAR`、`DOC88_PRESSE_EXE` 指定转换器路径。
+- Doc88 资源解析具有断点续跑能力：每页 SWF/PDF 会先保存到输出目录中的 `.doc88-work-<文档ID>`，中断后再次发送同一链接会复用已完成页面；成功生成最终 PDF 后自动清理该工作目录。
 
 
 # 社交媒体与文章提取到 NotebookLM 技能
@@ -57,6 +58,7 @@ npx playwright install chromium
   * LinkedIn 动态/长文章（格式如 `https://www.linkedin.com/feed/update/urn:li:activity:...` 或 `https://www.linkedin.com/posts/...`）
   * 小红书单篇图文笔记（格式如 `https://www.xiaohongshu.com/explore/...` 或分享短链接）
   * 哔哩哔哩视频（格式如 `https://www.bilibili.com/video/BV...`）
+  * Doc88 预览文档（格式如 `https://www.doc88.com/p-数字.html`）
 
 其他参数：
 
@@ -64,6 +66,7 @@ npx playwright install chromium
 * `--no-upload`：跳过旧版命令行 NotebookLM 上传
 * `--upload`：保留旧版命令行直接上传行为
 * `--handoff-notebooklm`：生成 NotebookLM 交接清单；应与 `--no-upload` 一起使用
+* Doc88 仅提供链接即可自动保存 PDF 和交接清单；默认不上传 NotebookLM。只有显式使用 `--upload` 才进入上传流程。
 
 ### Telegram 聊天记录导出转换
 
@@ -97,6 +100,21 @@ npx playwright install chromium
 
 **不要把官方接口为空、页面快照中的“暂无字幕”，或 `CDP_UNAVAILABLE` 当作“视频没有字幕”。** 三者只说明当前路径未取得字幕。只有实际展开播放器字幕菜单后，确认没有可见的 `中文 AI` 选项，才可以报告该 AI 字幕不可用。
 
+### B站增强能力
+
+- 原生字幕链路优先使用 `x/player/wbi/v2`，WBI 不可用时回退到 `x/player/v2`。
+- 当前范围是单视频，可用 URL 查询参数 `p` 指定分P；不自动批量抓取合集或 UP 主全量投稿。
+- 默认优先级固定为“官方字幕 → 已登录浏览器中的中文 AI 字幕 → 报告不可用”。`--fallback-to-asr` 只能显式开启本地 faster-whisper 回退；默认绝不会启动模型。ASR 支持 `tiny`、`base`、`small`，默认 `small`，结果标记为 `source: asr`。
+- 可启动独立 MCP server：
+
+```powershell
+node .\mcp\bilibili-server.js
+```
+
+MCP 提供 `get_video_transcript`、`search_transcript` 和 `export_notebooklm_artifacts`。MCP 只生成本地文件，不上传 NotebookLM；上传仍须经过用户确认流程。
+
+- 公开项目比较基线见 [references/bilibili-public-projects.md](references/bilibili-public-projects.md)。该文档记录比较日期和维护状态，运行时不会查询 GitHub。
+
 ### Codex 中的中文 AI 回退
 
 当命令行返回 `CDP_UNAVAILABLE`，且任务在 Codex 对话中执行时，改用已连接的 Chrome 会话完成 AI 字幕导出；不要要求用户先重启浏览器，也不要直接结束任务。详细且可复用的步骤见 [references/bilibili-ai-subtitle-fallback.md](references/bilibili-ai-subtitle-fallback.md)。核心顺序为：
@@ -116,6 +134,8 @@ npx playwright install chromium
 2. **`[动态标题]_online.md`**：**NotebookLM 云端专用版**。图片引用原官方外链地址，导入 Google NotebookLM 后云端图片即可完美渲染，且元数据保留完整。
 3. **`[动态标题].pdf`**：A4 打印格式 PDF，适合批注或直接上传到 NotebookLM。
 4. **`images/`**：本地下载存储的高清图片目录。
+   - 小红书图片优先按笔记原始 `imageList` 顺序提取，并以 `image_001`、`image_002`……保存；Markdown/PDF 元数据会注明顺序来源。
+   - 若页面没有可解析的原始列表，才回退到正文 DOM 顺序，并明确标记为回退顺序。
 5. B 站视频额外生成 **`<BV>_native.srt/json`** 或 **`<BV>_ai-browser.srt/json`**，JSON 保留时间轴、来源和原始链接。
 6. 交接模式额外生成 **`<安全标题>_notebooklm_handoff.json`**；B 站额外生成 **`<BV>_<来源>_notebooklm.md`**，原始 JSON/SRT 保留不变。
 

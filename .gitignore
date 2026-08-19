@@ -6,4 +6,6 @@ settings.json
 !SKILL.md
 !references/
 !references/bilibili-ai-subtitle-fallback.md
+!references/bilibili-public-projects.md
 !references/doc88.md
+scripts/__pycache__/

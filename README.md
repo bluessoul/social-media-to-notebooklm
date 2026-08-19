@@ -116,6 +116,26 @@ bilibili-output/BVxxxxxxxxxx_ai-browser_notebooklm_handoff.json
 
 使用 `--handoff-notebooklm` 时，交接清单建议上传 Markdown，而不是原始 JSON。JSON 会保留来源类型、原始链接、BV 号和每条字幕的起止时间。
 
+### B站增强能力
+
+默认优先级为：官方字幕（`x/player/wbi/v2`，再回退 `x/player/v2`）→ 已登录浏览器中的中文 AI 字幕 → 报告字幕不可用。当前只处理单个视频，可在 URL 中使用 `?p=2` 指定分P。
+
+无原生或 AI 字幕时，可以显式开启本地 ASR：
+
+```powershell
+.\run.bat --url "https://www.bilibili.com/video/BV..." --fallback-to-asr --asr-model small --no-upload --handoff-notebooklm
+```
+
+ASR 默认关闭，只有显式传入 `--fallback-to-asr` 才会运行；需要本机准备 `faster-whisper`、`yt-dlp` 和可用的 Python 环境。ASR 结果会标记为 `source: asr`。
+
+也可以运行独立的本地 MCP server：
+
+```powershell
+node .\mcp\bilibili-server.js
+```
+
+它提供 `get_video_transcript`、`search_transcript` 和 `export_notebooklm_artifacts`，只生成本地文件，不自动上传 NotebookLM。公开项目比较和维护基线见 `references/bilibili-public-projects.md`。
+
 ## 参数
 
 ```text

@@ -8,6 +8,11 @@ const {
   pageResourceUrls,
   parseDoc88Xml
 } = require('../lib/doc88');
+const { safeTitle } = require('../lib/doc88-browser');
+
+test('sanitizes browser-exported Doc88 filenames', () => {
+  assert.equal(safeTitle('A/B:C?D'), 'A_B_C_D');
+});
 
 test('round-trips Doc88 custom base64', () => {
   const value = JSON.stringify({ p_code: '74980400939797', p_name: 'GB_T 5019.5-2023' });
