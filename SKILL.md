@@ -10,8 +10,9 @@ description: "微信公众号、LinkedIn、小红书、哔哩哔哩内容提取�
 - 可使用 `--help` 查看参数；使用 `--no-upload` 跳过 NotebookLM 上传询问。
 - 在 Codex 中使用 `--no-upload --handoff-notebooklm` 完成保存后交接；用户确认前不得上传。
 - 需要 Node.js 18 或更高版本。
-- 支持 Doc88 预览文档链接（`https://www.doc88.com/p-数字.html`），提取为 PDF 并生成 NotebookLM 交接清单。
-- Doc88 PDF 转换需要 Java 17、ffdec 和 presse；可通过 `DOC88_FFDEC_JAR`、`DOC88_PRESSE_EXE` 指定转换器路径。
+- 支持 Doc88 预览文档链接（`https://www.doc88.com/p-数字.html`），默认自动打开页面、展开全部页面、滚动触发 Canvas 加载并导出 PDF，再生成 NotebookLM 交接清单。
+- Doc88 默认使用浏览器 Canvas 导出；浏览器渲染失败时自动回退到 PH/PK→SWF→FFDec/Presse 资源解析方式。回退方式需要 Java 17、ffdec 和 presse；可通过 `DOC88_FFDEC_JAR`、`DOC88_PRESSE_EXE` 指定转换器路径。
+- Doc88 资源解析具有断点续跑能力：每页 SWF/PDF 会先保存到输出目录中的 `.doc88-work-<文档ID>`，中断后再次发送同一链接会复用已完成页面；成功生成最终 PDF 后自动清理该工作目录。
 
 
 # 社交媒体与文章提取到 NotebookLM 技能
@@ -57,6 +58,7 @@ npx playwright install chromium
   * LinkedIn 动态/长文章（格式如 `https://www.linkedin.com/feed/update/urn:li:activity:...` 或 `https://www.linkedin.com/posts/...`）
   * 小红书单篇图文笔记（格式如 `https://www.xiaohongshu.com/explore/...` 或分享短链接）
   * 哔哩哔哩视频（格式如 `https://www.bilibili.com/video/BV...`）
+  * Doc88 预览文档（格式如 `https://www.doc88.com/p-数字.html`）
 
 其他参数：
 
@@ -64,6 +66,7 @@ npx playwright install chromium
 * `--no-upload`：跳过旧版命令行 NotebookLM 上传
 * `--upload`：保留旧版命令行直接上传行为
 * `--handoff-notebooklm`：生成 NotebookLM 交接清单；应与 `--no-upload` 一起使用
+* Doc88 仅提供链接即可自动保存 PDF 和交接清单；默认不上传 NotebookLM。只有显式使用 `--upload` 才进入上传流程。
 
 ### Telegram 聊天记录导出转换
 

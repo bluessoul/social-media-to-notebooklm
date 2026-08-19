@@ -377,14 +377,28 @@ async function run() {
   exportDir = await configureOutputDirectory();
   if (validation.type === 'doc88') {
     const { extractDoc88 } = require('./lib/doc88');
+    const { extractDoc88Browser } = require('./lib/doc88-browser');
     console.log(`Target Doc88 URL: ${targetUrl}`);
-    const result = await extractDoc88({ url: targetUrl, outputDir: exportDir, baseDir: __dirname });
+    let result;
+    if (process.env.DOC88_METHOD === 'resource') {
+      result = await extractDoc88({ url: targetUrl, outputDir: exportDir, baseDir: __dirname });
+    } else {
+      try {
+        console.log('Doc88: 使用浏览器渲染方式加载全部页面并导出 Canvas PDF...');
+        result = await extractDoc88Browser({ url: targetUrl, outputDir: exportDir });
+      } catch (browserError) {
+        console.warn(`Doc88 浏览器导出失败，自动回退资源解析方式：${browserError.message}`);
+        result = await extractDoc88({ url: targetUrl, outputDir: exportDir, baseDir: __dirname });
+      }
+    }
     console.log(`[成功] Doc88 文档提取完成:`);
     console.log(`- 标题: ${result.title}`);
     console.log(`- 文档 ID: ${result.pCode}`);
     console.log(`- 页数: ${result.pageCount}`);
+    console.log(`- 方法: ${result.method || 'resource-swf'}`);
     console.log(`- PDF: ${result.pdfPath}`);
-    if (handoffNotebooklm) {
+    const autoHandoff = !forceUpload;
+    if (handoffNotebooklm || autoHandoff) {
       const handoff = buildDoc88Handoff({
         url: targetUrl,
         title: result.title,
@@ -395,7 +409,7 @@ async function run() {
       const handoffPath = writeHandoff(exportDir, result.title.replace(/[\\/:*?"<>|]/g, '_'), handoff);
       console.log(`- NotebookLM 交接清单: ${handoffPath}`);
     }
-    if (!skipUpload && !handoffNotebooklm) await uploadToNotebookLM(result.pdfPath, result.title);
+    if (forceUpload && !skipUpload) await uploadToNotebookLM(result.pdfPath, result.title);
     return;
   }
   console.log(`Target URL: ${targetUrl}`);
