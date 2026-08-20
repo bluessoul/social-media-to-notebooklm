@@ -7,7 +7,7 @@ const readline = require('readline');
 const os = require('os');
 const { parseArguments, validateTargetUrl } = require('./lib/arguments');
 const { loadSettings, saveOutputDirectory } = require('./lib/settings');
-const { buildArticleHandoff, writeHandoff } = require('./lib/handoff');
+const { buildArticleHandoff, buildDoc88Handoff, buildEmlHandoff, writeHandoff } = require('./lib/handoff');
 
 // Parse arguments
 const cli = parseArguments(process.argv.slice(2));
@@ -170,8 +170,9 @@ async function configureOutputDirectory() {
 
 function showHelp() {
   console.log(`用法:
-  run.bat --url "微信、LinkedIn 或小红书单篇笔记链接"
-  run.bat "微信、LinkedIn 或小红书单篇笔记链接"
+  run.bat --url "微信、LinkedIn、小红书、B站或 Doc88 链接"
+  run.bat --file "邮件.eml 或邮件目录"
+  run.bat "微信、LinkedIn、小红书、B站、Doc88 链接或邮件路径"
   run.bat --set-output "保存位置"
 
 选项:
@@ -365,16 +366,69 @@ async function run() {
       options: cli
     });
     console.log('[成功] Telegram 聊天记录导出完成:');
-    console.log(- 标题: );
-    console.log(- 消息数: );
-    console.log(- Markdown: );
+    console.log(`- title: ${result.title}`);
+    console.log(`- message count: ${result.messageCount}`);
+    console.log(`- Markdown: ${result.markdownPath}`);
     if (result.handoffPath) {
-      console.log(- NotebookLM 交接清单: );
+      console.log(`- NotebookLM handoff: ${result.handoffPath}`);
     }
     return;
   }
 
+  if (validation.type === 'eml') {
+    const { processEmlInput } = require('./lib/eml-converter');
+    exportDir = await configureOutputDirectory();
+    const result = processEmlInput({ inputPath: targetUrl, outputDir: exportDir });
+    console.log('[成功] EML 邮件转换完成:');
+    console.log(`- 标题: ${result.title}`);
+    console.log(`- 邮件数: ${result.email_count}`);
+    console.log(`- Markdown: ${result.markdown}`);
+    if (result.attachments && result.attachments.length) {
+      console.log(`- 附件清单: ${result.attachments.join(', ')}`);
+    }
+    if (result.failed && result.failed.length) {
+      console.warn(`- 失败文件数: ${result.failed.length}`);
+    }
+    if (handoffNotebooklm) {
+      const handoff = buildEmlHandoff({
+        sourcePath: targetUrl,
+        title: result.title,
+        emailCount: result.email_count,
+        attachments: result.attachments,
+        files: { markdown: result.markdown }
+      });
+      const safeTitle = result.title.replace(/[\\/:*?"<>|]/g, '_');
+      const handoffPath = writeHandoff(exportDir, `${safeTitle}_eml`, handoff);
+      console.log(`- NotebookLM 交接清单: ${handoffPath}`);
+    }
+    if (!skipUpload && !handoffNotebooklm) await uploadToNotebookLM(result.markdown, result.title);
+    return;
+  }
+
   exportDir = await configureOutputDirectory();
+  if (validation.type === 'doc88') {
+    const { extractDoc88 } = require('./lib/doc88');
+    console.log(`Target Doc88 URL: ${targetUrl}`);
+    const result = await extractDoc88({ url: targetUrl, outputDir: exportDir, baseDir: __dirname });
+    console.log(`[成功] Doc88 文档提取完成:`);
+    console.log(`- 标题: ${result.title}`);
+    console.log(`- 文档 ID: ${result.pCode}`);
+    console.log(`- 页数: ${result.pageCount}`);
+    console.log(`- PDF: ${result.pdfPath}`);
+    if (handoffNotebooklm) {
+      const handoff = buildDoc88Handoff({
+        url: targetUrl,
+        title: result.title,
+        pCode: result.pCode,
+        pageCount: result.pageCount,
+        files: { pdf: result.pdfPath }
+      });
+      const handoffPath = writeHandoff(exportDir, result.title.replace(/[\\/:*?"<>|]/g, '_'), handoff);
+      console.log(`- NotebookLM 交接清单: ${handoffPath}`);
+    }
+    if (!skipUpload && !handoffNotebooklm) await uploadToNotebookLM(result.pdfPath, result.title);
+    return;
+  }
   console.log(`Target URL: ${targetUrl}`);
   console.log('Launching browser...');
   let browser;

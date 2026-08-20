@@ -1,15 +1,20 @@
 ---
 name: social-media-to-notebooklm
-description: "微信公众号、LinkedIn、小红书、哔哩哔哩内容提取与 Telegram 聊天记录 JSON 转换归档和 NotebookLM 交接技能。支持文章归档、B 站官方/AI 字幕导出、Telegram 聊天记录转换 Markdown，并在 AI 助手/Codex 中保存完成后按用户确认进入 NotebookLM 上传流程。"
+description: "微信公众号、LinkedIn、小红书、哔哩哔哩、Doc88 与 EML 内容提取，以及 Telegram 聊天记录 JSON 转换归档和 NotebookLM 交接技能。支持文章归档、B 站官方/AI 字幕导出、Doc88 PDF、EML 邮件 Markdown 与 Telegram 聊天记录转换，并在 AI 助手/Codex 中保存完成后按用户确认进入 NotebookLM 上传流程。"
 ---
 
-## v1.4 使用方式更新
+## v1.5 使用方式更新
 
 - 不再自动抓取预设文章；必须提供受支持平台的单篇链接或 B 站视频链接。
 - 第一次使用时设置保存位置。以后会自动使用该位置；只有使用 `--set-output "<保存位置>"` 时才会修改。
 - 可使用 `--help` 查看参数；使用 `--no-upload` 跳过 NotebookLM 上传询问。
 - 在 Codex 中使用 `--no-upload --handoff-notebooklm` 完成保存后交接；用户确认前不得上传。
 - 需要 Node.js 18 或更高版本。
+- 支持 Doc88 预览文档链接（`https://www.doc88.com/p-数字.html`），提取为 PDF 并生成 NotebookLM 交接清单。
+- Doc88 PDF 转换需要 Java 17、ffdec 和 presse；可通过 `DOC88_FFDEC_JAR`、`DOC88_PRESSE_EXE` 指定转换器路径。
+- 支持单个 `.eml` 文件或包含 `.eml` 文件的目录，转换为 Markdown、附件名称清单和 NotebookLM 交接清单。
+- EML 转换需要 Python 3；可通过 `EML_PYTHON_EXE` 指定 Python 解释器路径。
+- EML 的详细输入、输出和限制见 [references/eml.md](references/eml.md)。
 
 
 # 社交媒体与文章提取到 NotebookLM 技能
@@ -78,6 +83,15 @@ npx playwright install chromium
 - **消息与回复交叉链接**: 自动建立 `<a id="msg-ID"></a>` 锚点，回复引用可直接在 Markdown 中点击跳转。
 - **富文本与代码高亮**: 完整转换粗体、斜体、代码、pre 代码块、文本链接及引用。
 - **元数据与媒体标记**: 优雅渲染系统操作（邀请/移除成员、置顶消息等）、投票统计、回应数及媒体文件类型。
+
+### EML 邮件转换
+
+```powershell
+{baseDir}\run.bat --file "D:\Mail\message.eml" --no-upload --handoff-notebooklm
+{baseDir}\run.bat --file "D:\Mail\Export" --no-upload --handoff-notebooklm
+```
+
+支持单个邮件或目录中的 `.eml` 文件。每封邮件生成 Markdown；目录输入额外生成合并归档 Markdown。正文优先使用纯文本，缺少纯文本时将 HTML 转换为 Markdown，同时保留主题、地址、日期和附件名称。附件二进制内容不会被自动另存。转换器由 Node.js 调用 `lib/eml_to_md.py`，只使用 Python 标准库。
 
 ### B 站字幕导出
 

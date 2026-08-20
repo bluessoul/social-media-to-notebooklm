@@ -1,7 +1,7 @@
 {
   "name": "social-media-to-notebooklm",
-  "version": "1.4.0",
-  "description": "社交媒体文章与动态超强提取器",
+  "version": "1.5.0",
+  "description": "社交媒体、Doc88、EML 与 Telegram 内容归档及 NotebookLM 交接工具",
   "main": "scrape.js",
   "scripts": {
     "test": "node --test test/*.test.js"
