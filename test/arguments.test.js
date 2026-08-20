@@ -29,3 +29,18 @@ test('accepts Doc88 preview URLs and rejects non-preview Doc88 pages', () => {
   assert.deepEqual(validateTargetUrl('https://www.doc88.com/p-74980400939797.html'), { valid: true, type: 'doc88' });
   assert.equal(validateTargetUrl('https://www.doc88.com/p-abc.html').valid, false);
 });
+
+test('accepts EML files and directories with EML files', () => {
+  const fs = require('fs');
+  const os = require('os');
+  const path = require('path');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'social-media-eml-arguments-'));
+  try {
+    const emlPath = path.join(root, 'message.eml');
+    fs.writeFileSync(emlPath, 'From: sender@example.com\n\nHello', 'utf8');
+    assert.deepEqual(validateTargetUrl(emlPath), { valid: true, type: 'eml' });
+    assert.deepEqual(validateTargetUrl(root), { valid: true, type: 'eml' });
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});

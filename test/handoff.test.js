@@ -8,6 +8,7 @@ const {
   buildBilibiliMarkdown,
   buildBilibiliHandoff,
   buildDoc88Handoff,
+  buildEmlHandoff,
   writeHandoff
 } = require('../lib/handoff');
 
@@ -91,6 +92,31 @@ test('builds a Doc88 handoff with the extracted PDF as the upload source', () =>
     assert.equal(handoff.page_count, 11);
     assert.equal(handoff.suggested_upload, 'pdf');
     assert.equal(handoff.files.pdf, path.resolve(pdf));
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('builds an EML handoff with Markdown and attachment metadata', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'social-media-eml-handoff-'));
+  try {
+    const source = path.join(root, 'mail.eml');
+    const markdown = path.join(root, 'mail.md');
+    fs.writeFileSync(source, 'From: sender@example.com\n\nHello', 'utf8');
+    fs.writeFileSync(markdown, '# Mail\n', 'utf8');
+    const handoff = buildEmlHandoff({
+      sourcePath: source,
+      title: 'Mail',
+      emailCount: 1,
+      attachments: ['report.pdf'],
+      files: { markdown }
+    });
+    assert.equal(handoff.source_type, 'eml');
+    assert.equal(handoff.source_file, path.resolve(source));
+    assert.equal(handoff.email_count, 1);
+    assert.deepEqual(handoff.attachment_names, ['report.pdf']);
+    assert.equal(handoff.suggested_upload, 'markdown');
+    assert.equal(handoff.files.markdown, path.resolve(markdown));
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
