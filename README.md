@@ -58,31 +58,17 @@ EML 转换还需要 Python 3。程序会依次尝试 `EML_PYTHON_EXE`、Codex �
 
 ## EML 邮件转换
 
-转换单个邮件：
-
 ```powershell
 .\run.bat --file "D:\Mail\message.eml" --no-upload --handoff-notebooklm
-```
-
-转换一个目录中的全部 `.eml` 文件：
-
-```powershell
 .\run.bat --file "D:\Mail\Export" --no-upload --handoff-notebooklm
 ```
 
-转换结果包括：
-
-- 每封邮件一个 Markdown 文件；目录输入还会生成合并的邮件归档 Markdown。
-- 邮件主题、发件人、收件人、抄送、回复地址和日期。
-- 优先使用纯文本正文；没有纯文本时将 HTML 正文转换为 Markdown。
-- 邮件附件名称清单。当前不会解码或另存附件二进制内容。
-- `*_eml_notebooklm_handoff.json` 交接清单，默认建议上传合并 Markdown。
+支持单个邮件或目录中的 `.eml` 文件。每封邮件生成 Markdown；目录输入额外生成合并归档 Markdown。正文优先使用纯文本，缺少纯文本时将 HTML 转换为 Markdown，同时保留主题、地址、日期和附件名称。当前只记录附件名称，不会提取附件二进制内容。
 
 如 Python 不在 PATH 中，可以指定解释器：
 
 ```powershell
 $env:EML_PYTHON_EXE = "D:\Tools\Python312\python.exe"
-.\run.bat --file "D:\Mail\message.eml" --no-upload --handoff-notebooklm
 ```
 
 ## Telegram 聊天记录
@@ -99,13 +85,21 @@ $env:EML_PYTHON_EXE = "D:\Tools\Python312\python.exe"
 .\run.bat --url "https://www.bilibili.com/video/BV..." --output "D:\Subtitles"
 ```
 
-程序优先请求官方字幕；没有官方字幕时，可通过已登录并启用 CDP 的 Chrome/Edge 捕获播放器中的“中文 AI”字幕。启动浏览器示例：
+字幕优先级为官方字幕（WBI 接口失败时回退普通接口）→ 已登录浏览器中的中文 AI 字幕 → 报告不可用。AI 字幕需要以 CDP 端口启动已登录浏览器：
 
 ```text
 chrome.exe --remote-debugging-port=9223
 ```
 
-使用 `--handoff-notebooklm` 时会额外生成带时间轴的 NotebookLM Markdown 和交接清单；原始 SRT/JSON 保留用于归档。
+当前只处理单个视频，可使用 URL 中的 `?p=2` 指定分P。无官方或 AI 字幕时，只有显式传入 `--fallback-to-asr` 才会运行本地 ASR；ASR 需要 `faster-whisper`、`yt-dlp` 和可用的 Python 环境。
+
+也可以运行独立的本地 MCP server：
+
+```powershell
+node .\mcp\bilibili-server.js
+```
+
+MCP 只生成本地文件，不自动上传 NotebookLM。公开项目比较基线见 [references/bilibili-public-projects.md](references/bilibili-public-projects.md)。
 
 ## Doc88 文档
 
@@ -113,14 +107,14 @@ chrome.exe --remote-debugging-port=9223
 .\run.bat --url "https://www.doc88.com/p-74980400939797.html" --no-upload --handoff-notebooklm
 ```
 
-Doc88 PDF 转换需要 Java 17 或更高版本、ffdec 和 presse。转换器不随本项目分发，可通过环境变量指定：
+Doc88 默认尝试浏览器 Canvas 导出 PDF；浏览器渲染失败时回退到 PH/PK → SWF → FFDec/Presse 资源解析。回退转换需要 Java 17 或更高版本、ffdec 和 presse：
 
 ```powershell
 $env:DOC88_FFDEC_JAR = "D:\Tools\ffdec\ffdec.jar"
 $env:DOC88_PRESSE_EXE = "D:\Tools\presse.exe"
 ```
 
-也可以将 `ffdec/ffdec.jar` 与 `presse(.exe)` 放在技能目录中。详细说明见 [references/doc88.md](references/doc88.md)。
+Doc88 支持中断后复用输出目录中的 `.doc88-work-<文档ID>` 临时成果；成功生成最终 PDF 后清理该目录。详细说明见 [references/doc88.md](references/doc88.md)。
 
 ## NotebookLM 交接
 
@@ -128,7 +122,7 @@ $env:DOC88_PRESSE_EXE = "D:\Tools\presse.exe"
 
 1. 报告成果物和交接清单的完整路径。
 2. 询问用户是否进入 NotebookLM 上传流程；用户拒绝时停止。
-3. 根据来源推荐上传文件：文章优先 PDF 或在线 Markdown，B站优先 NotebookLM Markdown，Telegram/EML 优先 Markdown，Doc88 使用 PDF。
+3. 文章优先 PDF 或在线 Markdown，B站优先 NotebookLM Markdown，Telegram/EML 优先 Markdown，Doc88 使用 PDF。
 4. 用户确认后，再运行 NotebookLM 技能的认证、Notebook 选择和最终上传流程。
 5. 失败时保留本地文件和交接清单，不删除成果物。
 
@@ -140,9 +134,7 @@ node --check lib/eml-converter.js
 python -c "from pathlib import Path; compile(Path('lib/eml_to_md.py').read_text(encoding='utf-8'), 'lib/eml_to_md.py', 'exec')"
 ```
 
-测试覆盖参数识别、EML 转 Markdown、EML 交接清单、Doc88 资源重组、文章交接、B站字幕交接、Telegram JSON 转换和输出目录设置。
-
 ## 致谢
 
 - Doc88 资源解析与页面重组的实现思路参考并致谢 [cmy2008/doc88_extractor](https://github.com/cmy2008/doc88_extractor)。
-- EML 转换部分参考本工作区提供的 `Emltomd` 项目，并保留其使用 Python 标准库解析 MIME 邮件、优先提取纯文本正文的思路。
+- EML 转换部分参考本工作区提供的 `Emltomd` 项目，并采用 Python 标准库解析 MIME 邮件、优先提取纯文本正文的思路。
