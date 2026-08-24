@@ -1,9 +1,24 @@
 # Social Media to NotebookLM
 
-将网页文章、视频字幕、Telegram 聊天记录、Doc88 预览文档和 EML 邮件归档为适合本地阅读及 NotebookLM 导入的文件。
+**Local-first content capture and NotebookLM handoff**
 
-默认流程是先在本地生成并核验文件，再由用户明确确认是否进入 NotebookLM 上传流程。使用 `--no-upload --handoff-notebooklm` 时只生成成果物和交接清单，不会自动上传。
+将微信公众号、LinkedIn、小红书、哔哩哔哩、YouTube、Telegram、Doc88 和 EML 内容整理为可审查、可复用、可继续导入 NotebookLM 的本地文件。
 
+默认流程是：本地提取 → 生成文件 → 用户核验 → 可选交接 NotebookLM。使用 `--no-upload --handoff-notebooklm` 时只生成成果物和交接清单，不会自动上传。
+
+本项目不是 NotebookLM 的官方产品，也不是 NotebookLM 客户端；它专注于多平台内容获取、格式化和本地交接。
+
+```text
+URL / Telegram / EML export
+          ↓
+    local extraction
+          ↓
+ Markdown / PDF / SRT / JSON
+          ↓
+      user review
+          ↓
+ optional NotebookLM handoff
+```
 ## 支持的输入
 
 | 输入 | 识别方式 | 主要输出 |
