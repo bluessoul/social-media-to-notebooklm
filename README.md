@@ -19,6 +19,7 @@ URL / Telegram / EML export
           ↓
  optional NotebookLM handoff
 ```
+
 ## 支持的输入
 
 | 输入 | 识别方式 | 主要输出 |
@@ -47,7 +48,6 @@ npx playwright install chromium
 ```powershell
 python <skill-installer>/scripts/install-skill-from-github.py `
   --repo bluessoul/social-media-to-notebooklm --path .
-```
 ```
 
 EML 转换还需要 Python 3。程序会依次尝试 `EML_PYTHON_EXE`、Codex 自带 Python、`py -3`、`python` 和 `python3`。
