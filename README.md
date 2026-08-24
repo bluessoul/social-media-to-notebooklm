@@ -16,7 +16,14 @@
 | Doc88 | `https://www.doc88.com/p-数字.html` | PDF、交接清单 |
 | EML | 单个 `.eml` 文件或包含 `.eml` 的目录 | 邮件 Markdown、附件名称清单、交接清单 |
 
-## 安装
+
+## 在 Codex 中安装
+
+``powershell
+python <skill-installer>/scripts/install-skill-from-github.py ` 
+  --repo bluessoul/social-media-to-notebooklm --path .
+`` 
+`r`n## 安装
 
 需要 Node.js 18 或更高版本：
 
@@ -138,3 +145,11 @@ python -c "from pathlib import Path; compile(Path('lib/eml_to_md.py').read_text(
 
 - Doc88 资源解析与页面重组的实现思路参考并致谢 [cmy2008/doc88_extractor](https://github.com/cmy2008/doc88_extractor)。
 - EML 转换部分参考本工作区提供的 `Emltomd` 项目，并采用 Python 标准库解析 MIME 邮件、优先提取纯文本正文的思路。
+
+## 隐私与安全边界
+
+- 默认只在本地生成和保存结果，不会自动上传 NotebookLM。
+- Cookie、登录态和服务凭据通过本地环境变量或已登录浏览器提供，不应写入仓库。
+- Telegram 导出文件、EML 邮件、字幕、PDF、日志和截图可能包含个人或受版权保护的内容，请不要提交到 Git。
+- 使用 `--no-upload` 可跳过 NotebookLM 上传询问；使用 `--handoff-notebooklm` 只生成交接清单。
+- 请仅处理你有权访问和归档的内容，并遵守来源平台的条款、版权和隐私要求。
