@@ -32,13 +32,7 @@ URL / Telegram / EML export
 | EML | 单个 `.eml` 文件或包含 `.eml` 的目录 | 邮件 Markdown、附件名称清单、交接清单 |
 
 
-## 在 Codex 中安装
-
-``powershell
-python <skill-installer>/scripts/install-skill-from-github.py ` 
-  --repo bluessoul/social-media-to-notebooklm --path .
-`` 
-`r`n## 安装
+## 安装
 
 需要 Node.js 18 或更高版本：
 
@@ -46,6 +40,14 @@ python <skill-installer>/scripts/install-skill-from-github.py `
 cd <技能目录>
 npm install
 npx playwright install chromium
+```
+
+在 Codex 中安装：
+
+```powershell
+python <skill-installer>/scripts/install-skill-from-github.py `
+  --repo bluessoul/social-media-to-notebooklm --path .
+```
 ```
 
 EML 转换还需要 Python 3。程序会依次尝试 `EML_PYTHON_EXE`、Codex 自带 Python、`py -3`、`python` 和 `python3`。
