@@ -1,5 +1,7 @@
 # Social Media to NotebookLM
 
+[中文](README.md) · [English](README.en.md) · [Español](README.es.md)
+
 **Local-first content capture and NotebookLM handoff**
 
 将微信公众号、LinkedIn、小红书、哔哩哔哩、YouTube、Telegram、Doc88 和 EML 内容整理为可审查、可复用、可继续导入 NotebookLM 的本地文件。
